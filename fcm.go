@@ -29,12 +29,6 @@ var (
 	// Errors
 	ErrDataIsEmpty         = errors.New("data is empty")
 	ErrToManyRegIDs        = errors.New("too many registrations ids")
-	ErrInternalServerError = errors.New("internal server error")
-
-	errMap = map[string]error{
-		"InvalidRegistration": errors.New("invalid registration token"),
-		"InternalServerError": ErrInternalServerError,
-	}
 )
 
 type NotificationPayload struct {
