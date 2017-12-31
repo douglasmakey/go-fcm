@@ -52,7 +52,7 @@ func main() {
 	client.PushMultiple([]string{"token 1", "token 2"}, data)
 	//client.PushSingle("token 1", data)
 	
-	// registrationIds remove and return a list of invalid tokens
+	// registrationIds remove and return map of invalid tokens
 	badRegistrations := client.CleanRegistrationIds()
 	log.Println(badRegistrations) 
 	

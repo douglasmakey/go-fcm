@@ -125,7 +125,7 @@ func (c *Client) AppendRegistrationIds(ids []string) {
 	c.Message.RegistrationIds = append(c.Message.RegistrationIds, ids...)
 }
 
-// CleanRegistrationIds remove invalid token of RegistrationIds and return list of BadTokens
+// CleanRegistrationIds remove invalid token of RegistrationIds and return map of BadTokens
 func (c *Client) CleanRegistrationIds() []string {
 	var validTokens []string
 	var badTokens []string
