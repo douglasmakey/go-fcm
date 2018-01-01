@@ -1,10 +1,10 @@
 package fcm
 
 import (
-	"gopkg.in/h2non/gock.v1"
-	"net/http"
-	"testing"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"testing"
 )
 
 func TestNewClient(t *testing.T) {
@@ -85,12 +85,14 @@ func TestClient_AppendRegistrationIds(t *testing.T) {
 }
 
 func TestClient_CleanRegistrationIds(t *testing.T) {
-	defer gock.Off()
-	tokens := []string{"token 1", "token 2"}
-	gock.New(apiIID).
-		Get(tokens[0]).
-		Reply(http.StatusOK).
-		JSON(`{
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if req.Header.Get("Authorization") != "key=test" {
+			t.Fatalf("expected: key=test\ngot: %s", req.Header.Get("Authorization"))
+		}
+		rw.WriteHeader(http.StatusOK)
+		rw.Header().Set("Content-Type", "application/json")
+		if req.URL.Query()["token"][0] == "token_1" {
+			fmt.Fprint(rw, `{
   				"application":"com.iid.example",
 				"authorizedEntity":"123456782354",
 			  	"platform":"Android",
@@ -106,22 +108,25 @@ func TestClient_CleanRegistrationIds(t *testing.T) {
 				  		"topicname4":{"addDate":"2015-07-30"}
 						}
 			  		}
-	}`)
+			}`)
+		} else {
+			fmt.Fprint(rw, `{
+				"error":"InvalidToken"
+			}`)
+		}
 
-	gock.New(apiIID).
-		Get(tokens[1]).
-		Reply(http.StatusOK).
-		JSON(`{
-  				"error":"InvalidToken",
-	}`)
+	}))
 
+	defer server.Close()
 
+	tokens := []string{"token_1", "token_2"}
 	data := map[string]string{
 		"body": "Test",
 	}
 
 	// Init client
-	client := NewClient("key")
+	client := NewClient("test")
+	client.ApiIID = server.URL
 	client.PushMultiple(tokens, data)
 	badTokens := client.CleanRegistrationIds()
 
@@ -134,12 +139,12 @@ func TestClient_CleanRegistrationIds(t *testing.T) {
 	}
 }
 
-func TestClient_SendErrToManyRegIDs(t *testing.T){
+func TestClient_SendErrToManyRegIDs(t *testing.T) {
 	// Init client
 	client := NewClient("key")
 	var tokens []string
 
-	for i:= 0; i <= 1000; i++ {
+	for i := 0; i <= 1000; i++ {
 		token := fmt.Sprintf("token %d", i)
 		tokens = append(tokens, token)
 	}
@@ -162,18 +167,14 @@ func TestClient_SendErrToManyRegIDs(t *testing.T){
 }
 
 func TestClient_Send(t *testing.T) {
-	// Init client
-	client := NewClient("key")
-
-	t.Run("success", func(t *testing.T) {
-		defer gock.Off()
-
-		registrationId := "jfey12fugyuy12oijd"
-
-		gock.New(apiFCM).
-			Post("").
-			Reply(http.StatusOK).
-			JSON(`{
+	t.Run("success", func(tt *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			if req.Header.Get("Authorization") != "key=test" {
+				tt.Fatalf("expected: key=test\ngot: %s", req.Header.Get("Authorization"))
+			}
+			rw.WriteHeader(http.StatusOK)
+			rw.Header().Set("Content-Type", "application/json")
+			fmt.Fprint(rw, `{
 				"success": 1,
 				"failure":0,
 				"results": [{
@@ -182,45 +183,51 @@ func TestClient_Send(t *testing.T) {
 					"error": ""
 				}]
 			}`)
+		}))
+
+		defer server.Close()
+
+		registrationId := "jfey12fugyuy12oijd"
 
 		data := map[string]string{
-			"body": "Test",
+			"body": "test",
 		}
 
+		client := NewClient("test")
+		client.ApiFCM = server.URL
 		client.PushSingle(registrationId, data)
 
 		status, err := client.Send()
 		if err != nil {
-			t.Errorf("unexpected error: %v", err)
+			tt.Errorf("unexpected error: %v", err)
 		}
 
 		if status.StatusCode != http.StatusOK {
-			t.Errorf("expected 200 got %d", status.StatusCode)
+			tt.Errorf("expected 200 got %d", status.StatusCode)
 		}
 
 		if status.Success != 1 {
-			t.Errorf("expected 1 got %d", status.Success)
+			tt.Errorf("expected 1 got %d", status.Success)
 		}
 
 		if status.Failure != 0 {
-			t.Errorf("expected 0 got %d", status.Failure)
+			tt.Errorf("expected 0 got %d", status.Failure)
 		}
 
 		if status.Results[0].RegistrationID != registrationId {
-			t.Errorf("expected %s, got %s", registrationId, status.Results[0].RegistrationID)
+			tt.Errorf("expected %s, got %s", registrationId, status.Results[0].RegistrationID)
 		}
 
 	})
 
-	t.Run("success apply validate data", func(t *testing.T) {
-		defer gock.Off()
-
-		registrationId := "jfey12fugyuy12oijd"
-
-		gock.New(apiFCM).
-			Post("").
-			Reply(http.StatusOK).
-			JSON(`{
+	t.Run("success apply validate data", func(tt *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			if req.Header.Get("Authorization") != "key=test" {
+				tt.Fatalf("expected: key=test\ngot: %s", req.Header.Get("Authorization"))
+			}
+			rw.WriteHeader(http.StatusOK)
+			rw.Header().Set("Content-Type", "application/json")
+			fmt.Fprint(rw, `{
 				"success": 1,
 				"failure":0,
 				"results": [{
@@ -229,11 +236,19 @@ func TestClient_Send(t *testing.T) {
 					"error": ""
 				}]
 			}`)
+		}))
+
+		defer server.Close()
+
+		registrationId := "jfey12fugyuy12oijd"
 
 		data := map[string]string{
 			"body": "Test",
 		}
 
+		// Init client
+		client := NewClient("test")
+		client.ApiFCM = server.URL
 		client.PushSingle(registrationId, data)
 
 		client.Message.TimeToLive = 2419600
@@ -241,60 +256,67 @@ func TestClient_Send(t *testing.T) {
 
 		status, err := client.Send()
 		if err != nil {
-			t.Errorf("unexpected error: %v", err)
+			tt.Errorf("unexpected error: %v", err)
 		}
 
 		if client.Message.TimeToLive > 2419200 {
-			t.Errorf("expected 2419200, got %d", client.Message.TimeToLive)
+			tt.Errorf("expected 2419200, got %d", client.Message.TimeToLive)
 		}
 
 		if client.Message.Priority != HighPriority {
-			t.Errorf("expected high, got %s", client.Message.Priority)
+			tt.Errorf("expected high, got %s", client.Message.Priority)
 
 		}
 
 		if status.StatusCode != http.StatusOK {
-			t.Errorf("expected 200 got %d", status.StatusCode)
+			tt.Errorf("expected 200 got %d", status.StatusCode)
 		}
 
 		if status.Success != 1 {
-			t.Errorf("expected 1 got %d", status.Success)
+			tt.Errorf("expected 1 got %d", status.Success)
 		}
 
 		if status.Failure != 0 {
-			t.Errorf("expected 0 got %d", status.Failure)
+			tt.Errorf("expected 0 got %d", status.Failure)
 		}
 
 		if status.Results[0].RegistrationID != registrationId {
-			t.Errorf("expected %s, got %s", registrationId, status.Results[0].RegistrationID)
+			tt.Errorf("expected %s, got %s", registrationId, status.Results[0].RegistrationID)
 		}
 
 	})
 
-	t.Run("data is empty", func(t *testing.T) {
-		defer gock.Off()
-
+	t.Run("data is empty", func(tt *testing.T) {
 		registrationId := "jfey12fugyuy12oijd"
+		// Init client
+		client := NewClient("test")
 		client.PushSingle(registrationId, nil)
 
 		_, err := client.Send()
 		if err == nil {
-			t.Error("expected error data is empty")
+			tt.Error("expected error data is empty")
 		}
 
 	})
 
-	t.Run("failure", func(t *testing.T) {
-		defer gock.Off()
+	t.Run("failure", func(tt *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			if req.Header.Get("Authorization") != "key=test" {
+				tt.Fatalf("expected: key=test\ngot: %s", req.Header.Get("Authorization"))
+			}
+			rw.WriteHeader(http.StatusBadRequest)
+			rw.Header().Set("Content-Type", "application/json")
+		}))
 
-		gock.New(apiFCM).
-			Post("/").
-			Reply(400)
+		defer server.Close()
 
 		data := map[string]string{
 			"body": "Test",
 		}
 
+		// Init client
+		client := NewClient("test")
+		client.ApiFCM = server.URL
 		client.PushSingle("fff", data)
 
 		status, err := client.Send()

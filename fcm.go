@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net"
+	"time"
 )
 
 const (
@@ -14,8 +16,8 @@ const (
 	POST = "POST"
 
 	// Define Urls
-	apiFCM = "https://fcm.googleapis.com/fcm/send"
-	apiIID = "https://iid.googleapis.com/iid/"
+	defaultApiFCM = "https://fcm.googleapis.com/fcm/send"
+	defaultApiIID = "https://iid.googleapis.com/iid/info/%s?details=true"
 
 	// Set Max time to live for message
 	maxTTL = 2419200
@@ -27,8 +29,8 @@ const (
 
 var (
 	// Errors
-	ErrDataIsEmpty         = errors.New("data is empty")
-	ErrToManyRegIDs        = errors.New("too many registrations ids")
+	ErrDataIsEmpty  = errors.New("data is empty")
+	ErrToManyRegIDs = errors.New("too many registrations ids")
 )
 
 type NotificationPayload struct {
@@ -79,6 +81,8 @@ type Client struct {
 	apiKey     string
 	Message    *message
 	clientHttp *http.Client
+	ApiFCM     string
+	ApiIID     string
 }
 
 // NewClient Create instance of client
@@ -87,7 +91,24 @@ func NewClient(key string) *Client {
 	client := new(Client)
 	client.apiKey = key
 	client.Message = &message{}
-	client.clientHttp = &http.Client{}
+
+	// Create default HTTPClient
+	c := &http.Client{
+		Transport: &http.Transport{
+			Dial: (&net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}).Dial,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ResponseHeaderTimeout: 10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+		},
+	}
+	client.clientHttp = c
+
+	// Set default endpoints
+	client.ApiFCM = defaultApiFCM
+	client.ApiIID = defaultApiIID
 
 	return client
 }
@@ -140,7 +161,14 @@ func (c *Client) CleanRegistrationIds() []string {
 
 // GetTokenDetails get info about the token
 func (c *Client) GetTokenDetails(t string) (*tokenDetails, error) {
-	url := apiIID + fmt.Sprintf("info/%s?details=true", t)
+
+	var url string
+	if c.ApiIID == defaultApiIID {
+		url = fmt.Sprintf(c.ApiIID, t)
+	} else {
+		url = c.ApiIID + fmt.Sprintf("?token=%s", t)
+	}
+
 	resp, err := c.doRequest(GET, url, nil)
 	if err != nil {
 		return nil, err
@@ -167,7 +195,7 @@ func (c *Client) Send() (*response, error) {
 		return nil, err
 	}
 
-	resp, err := c.doRequest(POST, apiFCM, b)
+	resp, err := c.doRequest(POST, c.ApiFCM, b)
 	if err != nil {
 		return nil, err
 	}

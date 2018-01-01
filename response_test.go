@@ -1,18 +1,20 @@
 package fcm
 
 import (
-	"testing"
-	"gopkg.in/h2non/gock.v1"
+	"fmt"
 	"net/http"
+	"net/http/httptest"
+	"testing"
 )
 
 func TestResponse_GetInvalidTokens(t *testing.T) {
-	defer gock.Off()
-
-	gock.New(apiFCM).
-		Post("").
-		Reply(http.StatusOK).
-		JSON(`{
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if req.Header.Get("Authorization") != "key=test" {
+			t.Fatalf("expected: key=test\ngot: %s", req.Header.Get("Authorization"))
+		}
+		rw.WriteHeader(http.StatusOK)
+		rw.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(rw, `{
 				"success": 1,
 				"failure":0,
 				"results": [{
@@ -21,13 +23,17 @@ func TestResponse_GetInvalidTokens(t *testing.T) {
 					"error": ""
 				}, {"error": "InvalidToken"}, {"error": "InvalidToken"}]
 			}`)
+	}))
+
+	defer server.Close()
 
 	data := map[string]string{
 		"body": "Test",
 	}
 
 	// Init client
-	client := NewClient("key")
+	client := NewClient("test")
+	client.ApiFCM = server.URL
 	client.PushMultiple([]string{"token 1"}, data)
 
 	invalidTokens := []string{"token 2", "token 3"}
@@ -46,7 +52,6 @@ func TestResponse_GetInvalidTokens(t *testing.T) {
 		t.Errorf("expected 1 got %d", status.Success)
 	}
 
-
 	if status.Failure != 0 {
 		t.Errorf("expected 0 got %d", status.Failure)
 	}
@@ -62,5 +67,5 @@ func TestResponse_GetInvalidTokens(t *testing.T) {
 			t.Errorf("expected InvalidToken, got %s", val)
 		}
 	}
-}
 
+}

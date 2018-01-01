@@ -2,31 +2,33 @@ package fcm
 
 import (
 	"bytes"
-	"gopkg.in/h2non/gock.v1"
+	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 )
 
 func TestParseFcmResponse(t *testing.T) {
-	defer gock.Off()
-
-	gock.New(apiFCM).
-		Post("/").
-		Reply(http.StatusOK).
-		JSON(`{
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		rw.WriteHeader(http.StatusOK)
+		rw.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(rw, `{
 				"success": 1,
 				"failure":0,
 				"results": [{
-					"message_id":"q1w2e3r4",
-					"registration_id": "t5y6u7i8o9",
+					"message_id":"k2d2e3r4",
+					"registration_id": "t5y6e9d8o9",
 					"error": ""
 				}]
 			}`)
+	}))
+
+	defer server.Close()
 
 	data := `{"data":{"msg":"hello","sum":"New year"},"priority":"high","registration_ids":["token 1","token 2","token 3"]}`
 	body := bytes.NewBuffer([]byte(data))
 
-	res, err := http.Post(apiFCM, "application/json", body)
+	res, err := http.Post(server.URL, "application/json", body)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -39,18 +41,14 @@ func TestParseFcmResponse(t *testing.T) {
 	if response.StatusCode != http.StatusOK {
 		t.Errorf("expected 200, got %d", response.StatusCode)
 	}
+
 }
 
 func TestParseTokenDetails(t *testing.T) {
-	defer gock.Off()
-
-	// Set token
-	token := "token1"
-
-	gock.New(apiIID).
-		Get(token).
-		Reply(http.StatusOK).
-		JSON(`{
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		rw.WriteHeader(http.StatusOK)
+		rw.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(rw, `{
   				"application":"com.iid.example",
 				"authorizedEntity":"123456782354",
 			  	"platform":"Android",
@@ -66,9 +64,15 @@ func TestParseTokenDetails(t *testing.T) {
 				  		"topicname4":{"addDate":"2015-07-30"}
 						}
 			  		}
-	}`)
+		}`)
+	}))
 
-	res, err := http.Get(apiIID + token)
+	defer server.Close()
+
+	// Set token
+	token := "token1"
+
+	res, err := http.Get(server.URL + fmt.Sprintf("?token=%s", token))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
