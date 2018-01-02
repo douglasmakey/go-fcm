@@ -9,6 +9,8 @@ import (
 )
 
 func TestParseFcmResponse(t *testing.T) {
+	t.Parallel()
+
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		rw.WriteHeader(http.StatusOK)
 		rw.Header().Set("Content-Type", "application/json")
@@ -45,6 +47,8 @@ func TestParseFcmResponse(t *testing.T) {
 }
 
 func TestParseTokenDetails(t *testing.T) {
+	t.Parallel()
+
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		rw.WriteHeader(http.StatusOK)
 		rw.Header().Set("Content-Type", "application/json")
