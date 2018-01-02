@@ -8,6 +8,8 @@ import (
 )
 
 func TestResponse_GetInvalidTokens(t *testing.T) {
+	t.Parallel()
+
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		if req.Header.Get("Authorization") != "key=test" {
 			t.Fatalf("expected: key=test\ngot: %s", req.Header.Get("Authorization"))

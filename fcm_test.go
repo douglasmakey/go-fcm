@@ -4,10 +4,13 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"testing"
 )
 
 func TestNewClient(t *testing.T) {
+	t.Parallel()
+
 	key := "key"
 	client := NewClient(key)
 
@@ -17,18 +20,24 @@ func TestNewClient(t *testing.T) {
 
 }
 func TestClient_SetHTTPClient(t *testing.T) {
-	var newHTTPClient *http.Client
+	t.Parallel()
+
+	newHTTPClient := &http.Client{}
 	key := "key"
 	client := NewClient(key)
 	client.SetHTTPClient(newHTTPClient)
 
-	if client.clientHttp != newHTTPClient {
-		t.Fatalf("expected clientHttp %v", newHTTPClient)
+	if !reflect.DeepEqual(client.clientHttp, newHTTPClient) {
+		t.Fatalf(
+			"clients aren't the same: \nrecv:(%#v) \nsent:(%#v)",
+			client.clientHttp, newHTTPClient,
+		)
 	}
-
 }
 
 func TestClient_PushSingle(t *testing.T) {
+	t.Parallel()
+
 	client := NewClient("key")
 	data := map[string]string{
 		"body": "Test",
@@ -46,6 +55,8 @@ func TestClient_PushSingle(t *testing.T) {
 }
 
 func TestClient_PushMultiple(t *testing.T) {
+	t.Parallel()
+
 	client := NewClient("key")
 	tokens := []string{"token1", "token2", "token3"}
 	data := map[string]string{
@@ -64,6 +75,8 @@ func TestClient_PushMultiple(t *testing.T) {
 }
 
 func TestClient_AppendRegistrationIds(t *testing.T) {
+	t.Parallel()
+
 	client := NewClient("key")
 	tokens := []string{"token1", "token2", "token3"}
 	data := map[string]string{
@@ -85,6 +98,8 @@ func TestClient_AppendRegistrationIds(t *testing.T) {
 }
 
 func TestClient_CleanRegistrationIds(t *testing.T) {
+	t.Parallel()
+
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		if req.Header.Get("Authorization") != "key=test" {
 			t.Fatalf("expected: key=test\ngot: %s", req.Header.Get("Authorization"))
@@ -140,6 +155,8 @@ func TestClient_CleanRegistrationIds(t *testing.T) {
 }
 
 func TestClient_SendErrToManyRegIDs(t *testing.T) {
+	t.Parallel()
+
 	// Init client
 	client := NewClient("key")
 	var tokens []string
@@ -167,7 +184,10 @@ func TestClient_SendErrToManyRegIDs(t *testing.T) {
 }
 
 func TestClient_Send(t *testing.T) {
+	t.Parallel()
+
 	t.Run("success", func(tt *testing.T) {
+		tt.Parallel()
 		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 			if req.Header.Get("Authorization") != "key=test" {
 				tt.Fatalf("expected: key=test\ngot: %s", req.Header.Get("Authorization"))
@@ -221,6 +241,8 @@ func TestClient_Send(t *testing.T) {
 	})
 
 	t.Run("success apply validate data", func(tt *testing.T) {
+		tt.Parallel()
+
 		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 			if req.Header.Get("Authorization") != "key=test" {
 				tt.Fatalf("expected: key=test\ngot: %s", req.Header.Get("Authorization"))
@@ -287,6 +309,8 @@ func TestClient_Send(t *testing.T) {
 	})
 
 	t.Run("data is empty", func(tt *testing.T) {
+		tt.Parallel()
+
 		registrationId := "jfey12fugyuy12oijd"
 		// Init client
 		client := NewClient("test")
@@ -300,6 +324,8 @@ func TestClient_Send(t *testing.T) {
 	})
 
 	t.Run("failure", func(tt *testing.T) {
+		tt.Parallel()
+
 		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 			if req.Header.Get("Authorization") != "key=test" {
 				tt.Fatalf("expected: key=test\ngot: %s", req.Header.Get("Authorization"))
