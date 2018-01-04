@@ -104,6 +104,7 @@ func NewClient(key string) *Client {
 			ExpectContinueTimeout: 1 * time.Second,
 		},
 	}
+
 	client.clientHttp = c
 
 	// Set default endpoints
@@ -240,6 +241,9 @@ func (c *Client) validateData() error {
 func (c *Client) doRequest(m string, url string, data []byte) (*http.Response, error) {
 	// Create request
 	request, err := http.NewRequest(m, url, bytes.NewBuffer(data))
+	if err != nil {
+		return nil, err
+	}
 
 	// Set headers
 	request.Header.Set("Authorization", fmt.Sprintf("key=%v", c.apiKey))
