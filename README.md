@@ -1,5 +1,7 @@
 # go-fcm : FCM library in Go
 
+[![CircleCI](https://circleci.com/gh/douglasmakey/go-fcm.svg?style=svg)](https://circleci.com/gh/douglasmakey/go-fcm)
+
 Firebase Cloud Messaging ( FCM ) Library using golang ( Go )
 
 This library uses HTTP/JSON Firebase Cloud Messaging connection server protocol
