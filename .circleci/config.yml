@@ -15,3 +15,11 @@ jobs:
       # specify any bash command here prefixed with `run: `
       - run: go get -v -t -d ./...
       - run: go test -v ./...
+
+    test:
+      pre:
+        - go get github.com/mattn/goveralls
+      override:
+        - go test -v -cover -race -coverprofile=/home/ubuntu/coverage.out
+      post:
+        - /home/ubuntu/.go_workspace/bin/goveralls -coverprofile=/home/ubuntu/coverage.out -service=circle-ci -repotoken=$COVERALLS_TOKEN
