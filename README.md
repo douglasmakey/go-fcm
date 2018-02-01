@@ -68,3 +68,4 @@ func main() {
 }
 
 ```
+[Codecov]: https://codecov.io/gh/douglasmakey/go-fcm/branch/master/graph/badge.svg
