@@ -54,6 +54,26 @@ func TestClient_PushSingle(t *testing.T) {
 	}
 }
 
+func TestClient_PushSingleNotification(t *testing.T) {
+	t.Parallel()
+
+	client := NewClient("key")
+
+	notif := NotificationPayload{
+		Title: "a title",
+		Body:  "a body",
+	}
+	client.PushSingle("token1", notif)
+
+	if client.Message.To == "" {
+		t.Error("To is empty")
+	}
+
+	if len(client.Message.RegistrationIds) != 0 {
+		t.Errorf("expected size 0 got %v", len(client.Message.RegistrationIds))
+	}
+}
+
 func TestClient_PushMultiple(t *testing.T) {
 	t.Parallel()
 
@@ -64,6 +84,27 @@ func TestClient_PushMultiple(t *testing.T) {
 	}
 
 	client.PushMultiple(tokens, data)
+
+	if client.Message.To != "" {
+		t.Error("To is not empty")
+	}
+
+	if len(client.Message.RegistrationIds) != 3 {
+		t.Errorf("expected 3, got %d", len(client.Message.RegistrationIds))
+	}
+}
+
+func TestClient_PushMultipleNotification(t *testing.T) {
+	t.Parallel()
+
+	client := NewClient("key")
+	tokens := []string{"token1", "token2", "token3"}
+	notif := NotificationPayload{
+		Title: "a title",
+		Body:  "a body",
+	}
+
+	client.PushMultiple(tokens, notif)
 
 	if client.Message.To != "" {
 		t.Error("To is not empty")

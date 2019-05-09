@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
 	"net"
+	"net/http"
 	"time"
 )
 
@@ -29,7 +29,7 @@ const (
 
 var (
 	// Errors
-	ErrDataIsEmpty  = errors.New("data is empty")
+	ErrDataIsEmpty  = errors.New("data and notification are empty")
 	ErrToManyRegIDs = errors.New("too many registrations ids")
 )
 
@@ -124,15 +124,32 @@ func (c *Client) SetData(d interface{}) {
 	c.Message.Data = d
 }
 
+// SetNotification Set notification for message
+func (c *Client) SetNotification(n *NotificationPayload) {
+	c.Message.Notification = n
+}
+
 // SetMsgAndTo 'To' this parameter specifies the recipient of a message.
 func (c *Client) PushSingle(to string, d interface{}) {
 	c.SetData(d)
 	c.Message.To = to
 }
 
+// PushSingleNotification send a notification to a single token
+func (c *Client) PushSingleNotification(to string, n *NotificationPayload) {
+	c.SetNotification(n)
+	c.Message.To = to
+}
+
 // SetMsgAndIds Set Message and ids for send
 func (c *Client) PushMultiple(ids []string, d interface{}) {
 	c.SetData(d)
+	c.Message.RegistrationIds = ids
+}
+
+// PushMultipleNotification send a Notification to multiple ids
+func (c *Client) PushMultipleNotification(ids []string, n *NotificationPayload) {
+	c.SetNotification(n)
 	c.Message.RegistrationIds = ids
 }
 
@@ -214,8 +231,8 @@ func (c *Client) Send() (*response, error) {
 
 // validateData return error if data is wrong
 func (c *Client) validateData() error {
-	// Data is empty
-	if c.Message.Data == nil {
+	// Data and Notification is empty
+	if c.Message.Data == nil && c.Message.Notification == nil {
 		return ErrDataIsEmpty
 	}
 
